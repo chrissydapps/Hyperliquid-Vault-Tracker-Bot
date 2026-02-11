@@ -8,7 +8,7 @@ import json
 HYPERLIQUID_API = "https://api.hyperliquid.xyz/info"
 
 # Specific vault address to track
-VAULT_ADDRESS = "0x677d831aef5328190852e24f13c46cac05f984e7"
+VAULT_ADDRESS = "0xdfc24b077bc1425ad1dea75bcb6f8158e10df303"
 
 # Target coins
 TARGET_COINS = ['BTC', 'ETH', 'SOL', 'HYPE', 'FARTCOIN']
