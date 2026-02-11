@@ -14,73 +14,71 @@ VAULT_ADDRESS = "0xdfc24b077bc1425ad1dea75bcb6f8158e10df303"
 TARGET_COINS = ['BTC', 'ETH', 'SOL', 'HYPE', 'FARTCOIN']
 
 def get_vault_positions():
-    """Fetch positions for the specific vault"""
+    """Fetch positions for the vault via its leader wallet"""
     try:
-        # Get vault details
-        vault_details_payload = {
+        # 1. Get vault details
+        details_payload = {
             "type": "vaultDetails",
             "vaultAddress": VAULT_ADDRESS
         }
-        
-        print(f"Fetching details for vault: {VAULT_ADDRESS}")
-        
-        # Try to get vault name
-        try:
-            details_response = requests.post(HYPERLIQUID_API, json=vault_details_payload, timeout=10)
-            vault_info = details_response.json()
-            vault_name = vault_info.get('name', 'Unknown Vault') if isinstance(vault_info, dict) else 'Unknown Vault'
-        except:
-            vault_name = 'Unknown Vault'
-        
-        print(f"Vault name: {vault_name}")
-        
-        # Get vault positions
+
+        details_response = requests.post(
+            HYPERLIQUID_API,
+            json=details_payload,
+            timeout=10
+        )
+        vault_info = details_response.json()
+
+        vault_name = vault_info.get("name", "Unknown Vault")
+        leader_address = vault_info.get("leader")
+
+        if not leader_address:
+            print("❌ No leader address found for vault")
+            return []
+
+        print(f"Vault leader: {leader_address}")
+
+        # 2. Get positions for leader wallet
         positions_payload = {
-            "type": "clearinghouseState",
-            "user": VAULT_ADDRESS
+            "type": "userState",
+            "user": leader_address
         }
-        
-        pos_response = requests.post(HYPERLIQUID_API, json=positions_payload, timeout=10)
+
+        pos_response = requests.post(
+            HYPERLIQUID_API,
+            json=positions_payload,
+            timeout=10
+        )
         positions_data = pos_response.json()
-        
-        print(f"Got response: {positions_data.keys() if isinstance(positions_data, dict) else 'Not a dict'}")
-        
-        # Filter positions for target coins
+
+        asset_positions = positions_data.get("assetPositions", [])
+
+        if not asset_positions:
+            print("❌ No asset positions returned for leader")
+            return []
+
+        # 3. Filter for target coins
         filtered_positions = []
-        
-        if 'assetPositions' in positions_data and positions_data['assetPositions']:
-            print(f"Found {len(positions_data['assetPositions'])} total positions")
-            
-            for pos in positions_data['assetPositions']:
-                position = pos.get('position', {})
-                coin = position.get('coin', '').upper()
-                
-                print(f"  Checking coin: {coin}")
-                
-                # Check if coin matches any target
-                for target in TARGET_COINS:
-                    if target in coin:
-                        filtered_positions.append(pos)
-                        print(f"  ✓ Matched {target}")
-                        break
-        else:
-            print("No assetPositions found in response")
-        
-        print(f"Filtered to {len(filtered_positions)} target positions")
-        
-        if filtered_positions:
-            return [{
-                'name': vault_name,
-                'address': VAULT_ADDRESS,
-                'positions': filtered_positions
-            }]
-        
-        return []
-    
+        for pos in asset_positions:
+            position = pos.get("position", {})
+            coin = position.get("coin", "").upper()
+
+            if coin in TARGET_COINS:
+                filtered_positions.append(pos)
+                print(f"✓ Found {coin} position")
+
+        if not filtered_positions:
+            print("❌ No positions matched target coins")
+            return []
+
+        return [{
+            "name": vault_name,
+            "address": VAULT_ADDRESS,
+            "positions": filtered_positions
+        }]
+
     except Exception as e:
-        print(f"Error fetching vault positions: {e}")
-        import traceback
-        traceback.print_exc()
+        print("❌ Error fetching vault positions:", e)
         return []
 
 def format_position_message(vaults):
