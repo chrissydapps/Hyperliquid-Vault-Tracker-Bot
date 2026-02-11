@@ -15,10 +15,13 @@ TARGET_COINS = ['BTC', 'ETH', 'SOL', 'HYPE', 'FARTCOIN']
 
 def get_vault_positions():
     try:
+        # Correct payload according to official docs
         payload = {
-            "type": "vaultState",
-            "vaultAddress": VAULT_ADDRESS
+            "type": "clearinghouseState",
+            "user": VAULT_ADDRESS
         }
+
+        print(f"Fetching positions for vault: {VAULT_ADDRESS}")
 
         response = requests.post(
             HYPERLIQUID_API,
@@ -27,34 +30,48 @@ def get_vault_positions():
         )
 
         data = response.json()
+        
+        print(f"API Response keys: {list(data.keys())}")
 
         asset_positions = data.get("assetPositions", [])
 
         if not asset_positions:
-            print("❌ vaultState returned no positions")
+            print("❌ No assetPositions found")
+            print(f"Full response: {data}")
             return []
+
+        print(f"Total positions found: {len(asset_positions)}")
 
         filtered_positions = []
         for pos in asset_positions:
             position = pos.get("position", {})
-            coin = position.get("coin", "").upper()
+            coin = position.get("coin", "")
+            
+            print(f"Found coin: {coin}")
 
-            if coin in TARGET_COINS:
-                filtered_positions.append(pos)
-                print(f"✓ Found {coin}")
+            # Check if any target coin appears in the coin name
+            coin_upper = coin.upper()
+            for target in TARGET_COINS:
+                if target in coin_upper:
+                    filtered_positions.append(pos)
+                    print(f"✓ Matched {target}")
+                    break
+
+        print(f"Filtered to {len(filtered_positions)} target positions")
 
         if not filtered_positions:
-            print("❌ No target coin positions found")
             return []
 
         return [{
-            "name": data.get("name", "Vault"),
+            "name": "Vault",
             "address": VAULT_ADDRESS,
             "positions": filtered_positions
         }]
 
     except Exception as e:
-        print("❌ Error fetching vaultState:", e)
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 def format_position_message(vaults):
