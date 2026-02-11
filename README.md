@@ -120,4 +120,4 @@ TARGET_COINS = ['BTC', 'ETH', 'SOL', 'HYPE', 'FARTCOIN']
 
 ## License
 
-MIT License - feel free to modify and use as you wish!
+MIT License 
